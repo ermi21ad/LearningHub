@@ -20,12 +20,19 @@ func main() {
 	}
 
 	// Auto migrate models
-	if err := db.AutoMigrate(&models.User{}); err != nil {
+	if err := db.AutoMigrate(
+		&models.User{},
+		&models.Course{},
+		&models.Module{},
+		&models.Lesson{},
+		&models.Enrollment{},
+	); err != nil {
 		panic("migration failed: " + err.Error())
 	}
 
 	// Initialize handler
-	userHandler := handlers.NewUserHandler(db) // Fixed: added :
+	userHandler := handlers.NewUserHandler(db)
+	courseHandler := handlers.NewCourseHandler(db)
 
 	r := gin.Default()
 
@@ -34,6 +41,8 @@ func main() {
 	{
 		api.POST("/register", userHandler.RegisterUser)
 		api.POST("/login", userHandler.LoginUser)
+		api.GET("/courses", courseHandler.GetCourses)
+		api.GET("/courses/:id", courseHandler.GetCourseByID)
 
 		// Protected routes
 		protected := api.Group("/")
@@ -41,6 +50,12 @@ func main() {
 		{
 			protected.GET("/profile", userHandler.GetProfile)
 			protected.PUT("/profile", userHandler.UpdateProfile) // Add this line
+		}
+		instructor := api.Group("/")
+		instructor.Use(middleware.AuthMiddleware(), middleware.InstructorOnly())
+		{
+			instructor.POST("/courses", courseHandler.CreateCourse)
+			instructor.PUT("/courses/:id", courseHandler.UpdateCourse)
 		}
 	}
 
