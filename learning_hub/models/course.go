@@ -69,3 +69,27 @@ type UpdateCourseInput struct {
 	ImageURL    string  `json:"image_url"`
 	Published   bool    `json:"published"`
 }
+type LessonProgress struct {
+	gorm.Model
+	UserID      uint      `json:"user_id"`
+	LessonID    uint      `json:"lesson_id"`
+	CourseID    uint      `json:"course_id"` // Denormalized for easier queries
+	Completed   bool      `gorm:"default:false" json:"completed"`
+	CompletedAt time.Time `json:"completed_at"`
+	TimeSpent   int       `gorm:"default:0" json:"time_spent"` // in minutes
+
+	User   User   `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Lesson Lesson `gorm:"foreignKey:LessonID" json:"lesson,omitempty"`
+	Course Course `gorm:"foreignKey:CourseID" json:"course,omitempty"`
+}
+type Review struct {
+	gorm.Model
+	UserID    uint      `json:"user_id"`
+	CourseID  uint      `json:"course_id"`
+	Rating    int       `gorm:"type:int;check:rating>=1 AND rating<=5" json:"rating" binding:"required,min=1,max=5"`
+	Comment   string    `gorm:"type:text" json:"comment"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	User      User      `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Course    Course    `gorm:"foreignKey:CourseID" json:"course,omitempty"`
+}

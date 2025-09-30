@@ -12,25 +12,26 @@ import (
 )
 
 func main() {
-
 	dsn := "host=localhost user=postgres password=1289 dbname=learning_hub port=5432 sslmode=disable"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		panic("failed to connect with database")
+		panic("failed to connect with database: " + err.Error())
 	}
 
-	// Auto migrate models
+	// Auto migrate ALL models
 	if err := db.AutoMigrate(
 		&models.User{},
 		&models.Course{},
 		&models.Module{},
 		&models.Lesson{},
 		&models.Enrollment{},
+		&models.LessonProgress{},
+		&models.Review{},
 	); err != nil {
 		panic("migration failed: " + err.Error())
 	}
 
-	// Initialize handler
+	// Initialize handlers
 	userHandler := handlers.NewUserHandler(db)
 	courseHandler := handlers.NewCourseHandler(db)
 
@@ -39,18 +40,35 @@ func main() {
 	// API routes group
 	api := r.Group("/api")
 	{
-		api.POST("/register", userHandler.RegisterUser)
-		api.POST("/login", userHandler.LoginUser)
+		// Public routes
 		api.GET("/courses", courseHandler.GetCourses)
 		api.GET("/courses/:id", courseHandler.GetCourseByID)
 
-		// Protected routes
+		// Auth routes
+		api.POST("/register", userHandler.RegisterUser)
+		api.POST("/login", userHandler.LoginUser)
+
+		// Protected user routes (all authenticated users)
 		protected := api.Group("/")
 		protected.Use(middleware.AuthMiddleware())
 		{
 			protected.GET("/profile", userHandler.GetProfile)
-			protected.PUT("/profile", userHandler.UpdateProfile) // Add this line
+			protected.PUT("/profile", userHandler.UpdateProfile)
+			protected.GET("/dashboard", courseHandler.GetStudentDashboard)
 		}
+
+		// Student-only routes
+		student := api.Group("/")
+		student.Use(middleware.AuthMiddleware(), middleware.StudentOnly())
+		{
+			student.POST("/courses/:id/enroll", courseHandler.EnrollCourse)
+			student.GET("/my-courses", courseHandler.GetStudentCourses)
+			student.PUT("/progress/lesson", courseHandler.UpdateLessonProgress)
+			student.GET("/courses/:id/progress", courseHandler.GetCourseProgress)
+			student.POST("/courses/:id/review", courseHandler.SubmitCourseReview)
+		}
+
+		// Instructor-only routes
 		instructor := api.Group("/")
 		instructor.Use(middleware.AuthMiddleware(), middleware.InstructorOnly())
 		{
@@ -60,9 +78,7 @@ func main() {
 	}
 
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "healthy",
-		})
+		c.JSON(200, gin.H{"status": "healthy"})
 	})
 
 	fmt.Println("🚀 LearnHub API running on port 8080...")
