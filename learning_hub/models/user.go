@@ -7,10 +7,17 @@ import (
 
 type User struct {
 	gorm.Model
-	Email    string `gorm:"type:varchar(100);uniqueIndex" json:"email" binding:"required,email"`
-	Password string `gorm:"type:varchar(100)" json:"password" binding:"required,min=6"`
-	Name     string `gorm:"type:varchar(100)" json:"name" binding:"required"`
-	Role     string `gorm:"type:varchar(20);default:'student'" json:"role" binding:"required,oneof=student instructor admin"`
+	FirstName string `gorm:"type:varchar(100);not null" json:"first_name"`
+	LastName  string `gorm:"type:varchar(100);not null" json:"last_name"`
+	Email     string `gorm:"type:varchar(100);uniqueIndex;not null" json:"email"`
+	Password  string `gorm:"type:varchar(255);not null" json:"-"`
+	Phone     string `gorm:"type:varchar(20)" json:"phone"` // Add this field if missing
+	Role      string `gorm:"type:varchar(20);default:'student'" json:"role"`
+
+	// Relationships
+	Courses     []Course     `gorm:"foreignKey:InstructorID" json:"courses,omitempty"`
+	Enrollments []Enrollment `gorm:"foreignKey:UserID" json:"enrollments,omitempty"`
+	Reviews     []Review     `gorm:"foreignKey:UserID" json:"reviews,omitempty"`
 }
 
 // HashPassword hashes the user's password before saving

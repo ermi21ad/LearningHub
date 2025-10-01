@@ -50,17 +50,6 @@ type Lesson struct {
 	Module   Module `gorm:"foreignKey:ModuleID" json:"module,omitempty"`
 }
 
-type Enrollment struct {
-	gorm.Model
-	UserID     uint      `json:"user_id"`
-	CourseID   uint      `json:"course_id"`
-	EnrolledAt time.Time `json:"enrolled_at"`
-	Progress   float64   `gorm:"default:0" json:"progress"` // 0-100%
-
-	User   User   `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Course Course `gorm:"foreignKey:CourseID" json:"course,omitempty"`
-}
-
 // UpdateCourseInput is used for partial updates
 type UpdateCourseInput struct {
 	Title        string  `json:"title"`
