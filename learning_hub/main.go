@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	dsn := "host=localhost user=postgres password=1289 dbname=learning_hub port=5432 sslmode=disable"
+	dsn := "host=localhost user=postgres password=postgres dbname=learning_hub port=5432 sslmode=disable"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect with database: " + err.Error())
@@ -36,6 +36,9 @@ func main() {
 	courseHandler := handlers.NewCourseHandler(db)
 
 	r := gin.Default()
+	uploadHandler := handlers.NewUploadHandler(db)
+	r.POST("/api/upload", uploadHandler.UploadFile)
+	r.GET("/uploads/:type/:filename", uploadHandler.ServeFile)
 
 	// API routes group
 	api := r.Group("/api")

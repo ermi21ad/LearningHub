@@ -8,17 +8,18 @@ import (
 
 type Course struct {
 	gorm.Model
-	Title       string  `gorm:"type:varchar(200)" json:"title" binding:"required"`
-	Description string  `gorm:"type:text" json:"description" binding:"required"`
-	Price       float64 `gorm:"type:decimal(10,2)" json:"price"`
-	Category    string  `gorm:"type:varchar(100)" json:"category"`
-	Level       string  `gorm:"type:varchar(50)" json:"level" binding:"required,oneof=beginner intermediate advanced"`
-	ImageURL    string  `gorm:"type:varchar(255)" json:"image_url"`
-	Published   bool    `gorm:"default:false" json:"published"`
+	Title        string  `gorm:"type:varchar(200)" json:"title" binding:"required"`
+	Description  string  `gorm:"type:text" json:"description" binding:"required"`
+	Price        float64 `gorm:"type:decimal(10,2)" json:"price"`
+	Category     string  `gorm:"type:varchar(100)" json:"category"`
+	Level        string  `gorm:"type:varchar(50)" json:"level" binding:"required,oneof=beginner intermediate advanced"`
+	ImageURL     string  `gorm:"type:varchar(500)" json:"image_url"`     // Updated to 500
+	ThumbnailURL string  `gorm:"type:varchar(500)" json:"thumbnail_url"` // Added thumbnail field
+	Published    bool    `gorm:"default:false" json:"published"`
 
 	// Relationships
-	InstructorID uint         `json:"instructor_id"`                                       // Set from JWT, no binding required
-	Instructor   User         `gorm:"foreignKey:InstructorID" json:"instructor,omitempty"` // Preload only
+	InstructorID uint         `json:"instructor_id"`
+	Instructor   User         `gorm:"foreignKey:InstructorID" json:"instructor,omitempty"`
 	Modules      []Module     `gorm:"foreignKey:CourseID" json:"modules,omitempty"`
 	Enrollments  []Enrollment `gorm:"foreignKey:CourseID" json:"enrollments,omitempty"`
 }
@@ -30,21 +31,22 @@ type Module struct {
 	OrderIndex  int    `gorm:"default:0" json:"order_index"`
 
 	// Relationships
-	CourseID uint     `json:"course_id"` // Set from parent, no binding required
+	CourseID uint     `json:"course_id"`
 	Course   Course   `gorm:"foreignKey:CourseID" json:"course,omitempty"`
 	Lessons  []Lesson `gorm:"foreignKey:ModuleID" json:"lessons,omitempty"`
 }
 
 type Lesson struct {
 	gorm.Model
-	Title      string `gorm:"type:varchar(200)" json:"title" binding:"required"`
-	Content    string `gorm:"type:text" json:"content"`
-	VideoURL   string `gorm:"type:varchar(255)" json:"video_url"`
-	Duration   int    `gorm:"default:0" json:"duration"` // in minutes
-	OrderIndex int    `gorm:"default:0" json:"order_index"`
+	Title       string `gorm:"type:varchar(200)" json:"title" binding:"required"`
+	Content     string `gorm:"type:text" json:"content"`
+	VideoURL    string `gorm:"type:varchar(500)" json:"video_url"`    // Single VideoURL field
+	DocumentURL string `gorm:"type:varchar(500)" json:"document_url"` // Added document field
+	Duration    int    `gorm:"default:0" json:"duration"`             // in minutes
+	OrderIndex  int    `gorm:"default:0" json:"order_index"`
 
 	// Relationships
-	ModuleID uint   `json:"module_id"` // Set from parent, no binding required
+	ModuleID uint   `json:"module_id"`
 	Module   Module `gorm:"foreignKey:ModuleID" json:"module,omitempty"`
 }
 
@@ -61,14 +63,16 @@ type Enrollment struct {
 
 // UpdateCourseInput is used for partial updates
 type UpdateCourseInput struct {
-	Title       string  `json:"title"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	Category    string  `json:"category"`
-	Level       string  `json:"level"`
-	ImageURL    string  `json:"image_url"`
-	Published   bool    `json:"published"`
+	Title        string  `json:"title"`
+	Description  string  `json:"description"`
+	Price        float64 `json:"price"`
+	Category     string  `json:"category"`
+	Level        string  `json:"level"`
+	ImageURL     string  `json:"image_url"`
+	ThumbnailURL string  `json:"thumbnail_url"` // Added thumbnail field
+	Published    bool    `json:"published"`
 }
+
 type LessonProgress struct {
 	gorm.Model
 	UserID      uint      `json:"user_id"`
@@ -82,6 +86,7 @@ type LessonProgress struct {
 	Lesson Lesson `gorm:"foreignKey:LessonID" json:"lesson,omitempty"`
 	Course Course `gorm:"foreignKey:CourseID" json:"course,omitempty"`
 }
+
 type Review struct {
 	gorm.Model
 	UserID    uint      `json:"user_id"`
