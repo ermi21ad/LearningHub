@@ -220,21 +220,30 @@ func (h *CourseHandler) EnrollCourse(c *gin.Context) {
 }
 
 // GetStudentCourses - Get all courses a student is enrolled in
+// GetStudentCourses - Get all courses a student is enrolled in
 func (h *CourseHandler) GetStudentCourses(c *gin.Context) {
-	userID, exists := c.Get("userID")
+	userIDInterface, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
 		return
 	}
+
+	// Convert userID to uint properly
+	userID, ok := userIDInterface.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID type"})
+		return
+	}
+
 	var enrollments []models.Enrollment
 	if err := h.DB.Preload("Course").Where("user_id = ?", userID).Find(&enrollments).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch enrollments: " + err.Error()})
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"enrollments": enrollments,
 	})
-
 }
 
 // UpdateLessonProgress - Mark lesson as completed and update progress
