@@ -13,7 +13,8 @@ func GenerateVerificationToken() (string, error) {
 	if _, err := rand.Read(bytes); err != nil {
 		return "", fmt.Errorf("failed to generate token: %v", err)
 	}
-	return hex.EncodeToString(bytes), nil
+	// Add prefix to make verification tokens unique from reset tokens
+	return "verify_" + hex.EncodeToString(bytes), nil
 }
 
 // IsTokenExpired checks if a verification token has expired (24 hours)
@@ -40,4 +41,27 @@ func GenerateRandomCode(length int) string {
 	// Ensure code has exactly 'length' digits
 	format := fmt.Sprintf("%%0%dd", length)
 	return fmt.Sprintf(format, code%1000000)
+}
+
+// GeneratePasswordResetToken creates a secure random token for password reset
+func GeneratePasswordResetToken() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", fmt.Errorf("failed to generate reset token: %v", err)
+	}
+	// Add prefix to make reset tokens unique from verification tokens
+	return "reset_" + hex.EncodeToString(bytes), nil
+}
+
+// IsResetTokenExpired checks if a password reset token has expired (1 hour)
+func IsResetTokenExpired(expiresAt *time.Time) bool {
+	if expiresAt == nil {
+		return true
+	}
+	return time.Now().After(*expiresAt)
+}
+
+// CalculateResetExpiry calculates when a reset token should expire
+func CalculateResetExpiry() time.Time {
+	return time.Now().Add(1 * time.Hour) // 1 hour expiry
 }

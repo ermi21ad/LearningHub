@@ -46,6 +46,8 @@ func (Payment) TableName() string {
 }
 
 // Enrollment represents a user's enrollment in a course
+// Add these to your Enrollment model in models/payment.go:
+
 type Enrollment struct {
 	ID       uint   `gorm:"primaryKey" json:"id"`
 	UserID   uint   `gorm:"not null;uniqueIndex:idx_user_course" json:"user_id"`
@@ -63,14 +65,45 @@ type Enrollment struct {
 	CurrentModule *uint   `gorm:"index" json:"current_module"`
 	CurrentLesson *uint   `gorm:"index" json:"current_lesson"`
 
+	// Detailed progress tracking
+	TotalLessons     int `gorm:"not null;default:0" json:"total_lessons"`
+	CompletedLessons int `gorm:"not null;default:0" json:"completed_lessons"`
+	TimeSpent        int `gorm:"not null;default:0" json:"time_spent"` // in minutes
+
+	// Certificate
+	CertificateID       *string    `gorm:"type:varchar(100);uniqueIndex" json:"certificate_id"`
+	CompletedAt         *time.Time `json:"completed_at"`
+	CertificateIssuedAt *time.Time `json:"certificate_issued_at"`
+
 	// Timestamps
-	EnrolledAt  time.Time  `gorm:"not null;default:CURRENT_TIMESTAMP" json:"enrolled_at"`
-	CompletedAt *time.Time `json:"completed_at"`
+	EnrolledAt     time.Time `gorm:"not null;default:CURRENT_TIMESTAMP" json:"enrolled_at"`
+	LastActivityAt time.Time `gorm:"not null;default:CURRENT_TIMESTAMP" json:"last_activity_at"`
 }
 
-// TableName specifies the table name for Enrollment
-func (Enrollment) TableName() string {
-	return "enrollments"
+// Certificate model for tracking issued certificates
+type Certificate struct {
+	ID           string     `gorm:"primaryKey;type:varchar(100)" json:"id"`
+	EnrollmentID uint       `gorm:"not null;uniqueIndex" json:"enrollment_id"`
+	Enrollment   Enrollment `gorm:"foreignKey:EnrollmentID" json:"enrollment,omitempty"`
+	UserID       uint       `gorm:"not null" json:"user_id"`
+	CourseID     uint       `gorm:"not null" json:"course_id"`
+
+	// Certificate details
+	IssueDate      time.Time  `gorm:"not null" json:"issue_date"`
+	ExpiryDate     *time.Time `json:"expiry_date"`
+	CertificateURL *string    `gorm:"type:text" json:"certificate_url"`
+
+	// Verification
+	VerificationCode string `gorm:"type:varchar(50);uniqueIndex" json:"verification_code"`
+
+	// Timestamps
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// TableName specifies the table name for Certificate
+func (Certificate) TableName() string {
+	return "certificates"
 }
 
 // BeforeCreate generates a unique transaction reference

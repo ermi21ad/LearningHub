@@ -422,6 +422,17 @@ func (h *CourseHandler) SubmitCourseReview(c *gin.Context) {
 	})
 }
 
+// GetCourseReviews handles GET /courses/:id/reviews
+func (h *CourseHandler) GetCourseReviews(c *gin.Context) {
+	courseID := c.Param("id")
+	var reviews []models.Review
+	if err := h.DB.Where("course_id = ?", courseID).Find(&reviews).Error; err != nil {
+		c.JSON(500, gin.H{"error": "Failed to fetch reviews"})
+		return
+	}
+	c.JSON(200, gin.H{"reviews": reviews})
+}
+
 // UploadFile handles file uploads for course materials
 func (h *UploadHandler) UploadFile(c *gin.Context) {
 	// Get the uploaded file from the form

@@ -6,6 +6,7 @@ import (
 	"learning_hub/pkg/config"
 	"log"
 	"strings"
+	"time"
 
 	"gopkg.in/gomail.v2"
 )
@@ -479,6 +480,224 @@ func SendVerificationSuccessEmail(to, name string) error {
 		</body>
 		</html>
 	`, name)
+
+	return SendEmail(EmailData{
+		To:      to,
+		Subject: subject,
+		Body:    body,
+		Name:    name,
+	})
+}
+
+// SendPasswordResetEmail sends password reset link
+func SendPasswordResetEmail(to, name, resetToken string) error {
+	subject := "🔐 Reset Your LearnHub Password"
+	resetURL := fmt.Sprintf("http://localhost:8080/api/reset-password?token=%s", resetToken)
+
+	body := fmt.Sprintf(`
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<style>
+				body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+				.container { max-width: 600px; margin: 0 auto; background: #ffffff; }
+				.header { background: linear-gradient(135deg, #f59e0b 0%%, #d97706 100%%); color: white; padding: 40px 20px; text-align: center; }
+				.content { padding: 30px; background: #f8fafc; }
+				.reset-box { background: white; padding: 25px; border-radius: 10px; border: 2px dashed #e2e8f0; margin: 20px 0; text-align: center; }
+				.reset-button { display: inline-block; padding: 15px 30px; background: #f59e0b; color: white; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin: 15px 0; }
+				.reset-code { background: #f1f5f9; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 18px; color: #1e293b; margin: 15px 0; }
+				.footer { padding: 20px; text-align: center; color: #64748b; font-size: 14px; background: #1e293b; color: white; }
+				.note { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; }
+				.warning { background: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin: 15px 0; }
+			</style>
+		</head>
+		<body>
+			<div class="container">
+				<div class="header">
+					<h1>Password Reset Request</h1>
+					<p>Secure your account with a new password</p>
+				</div>
+				<div class="content">
+					<h2>Hello %s,</h2>
+					<p>We received a request to reset your LearnHub account password.</p>
+					
+					<div class="reset-box">
+						<h3>🔄 Reset Your Password</h3>
+						<p>Click the button below to create a new password:</p>
+						
+						<center>
+							<a href="%s" class="reset-button">Reset Password</a>
+						</center>
+						
+						<p style="margin-top: 20px; color: #64748b; font-size: 14px;">
+							Or copy and paste this link in your browser:<br>
+							<span class="reset-code">%s</span>
+						</p>
+					</div>
+					
+					<div class="note">
+						<p><strong>⏰ Important:</strong> This reset link will expire in 1 hour for security reasons.</p>
+						<p>If you don't reset your password within this time, you'll need to request a new link.</p>
+					</div>
+					
+					<div class="warning">
+						<p><strong>⚠️ Security Notice:</strong> If you didn't request this password reset, please ignore this email and ensure your account is secure.</p>
+						<p>Your password will not be changed unless you click the link above and create a new one.</p>
+					</div>
+					
+					<p>Need help? Contact our support team for assistance.</p>
+					
+					<p>Stay secure,<br><strong>The LearnHub Team</strong></p>
+				</div>
+				<div class="footer">
+					<p>&copy; 2024 LearnHub. All rights reserved.</p>
+					<p>This is an automated message, please do not reply directly to this email.</p>
+				</div>
+			</div>
+		</body>
+		</html>
+	`, name, resetURL, resetURL)
+
+	return SendEmail(EmailData{
+		To:      to,
+		Subject: subject,
+		Body:    body,
+		Name:    name,
+	})
+}
+
+// SendPasswordResetSuccessEmail sends confirmation after successful password reset
+func SendPasswordResetSuccessEmail(to, name string) error {
+	subject := "✅ Password Reset Successful"
+	body := fmt.Sprintf(`
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<style>
+				body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+				.container { max-width: 600px; margin: 0 auto; background: #ffffff; }
+				.header { background: linear-gradient(135deg, #10b981 0%%, #059669 100%%); color: white; padding: 40px 20px; text-align: center; }
+				.content { padding: 30px; background: #f8fafc; }
+				.success-box { background: white; padding: 25px; border-radius: 10px; border: 2px solid #10b981; margin: 20px 0; text-align: center; }
+				.security-tips { background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; }
+				.footer { padding: 20px; text-align: center; color: #64748b; font-size: 14px; background: #1e293b; color: white; }
+			</style>
+		</head>
+		<body>
+			<div class="container">
+				<div class="header">
+					<h1>Password Updated Successfully! 🔒</h1>
+					<p>Your account security has been enhanced</p>
+				</div>
+				<div class="content">
+					<h2>Hello %s,</h2>
+					
+					<div class="success-box">
+						<h3 style="color: #10b981;">✅ Password Reset Complete</h3>
+						<p>Your LearnHub password has been successfully updated.</p>
+						<p><strong>Time:</strong> %s</p>
+					</div>
+					
+					<div class="security-tips">
+						<h3>🔐 Security Tips</h3>
+						<ul>
+							<li>Use a strong, unique password</li>
+							<li>Don't reuse passwords across different sites</li>
+							<li>Enable two-factor authentication if available</li>
+							<li>Regularly update your passwords</li>
+						</ul>
+					</div>
+					
+					<p>If you made this change, you're all set! If you didn't, please contact our support team immediately.</p>
+					
+					<p>You can now login with your new password:</p>
+					<center>
+						<a href="http://localhost:8080/api/login" style="display: inline-block; padding: 12px 30px; background: #3b82f6; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">Login to LearnHub</a>
+					</center>
+					
+					<p>Stay secure,<br><strong>The LearnHub Team</strong></p>
+				</div>
+				<div class="footer">
+					<p>&copy; 2024 LearnHub. All rights reserved.</p>
+				</div>
+			</div>
+		</body>
+		</html>
+	`, name, time.Now().Format("January 2, 2006 at 3:04 PM"))
+
+	return SendEmail(EmailData{
+		To:      to,
+		Subject: subject,
+		Body:    body,
+		Name:    name,
+	})
+}
+
+// SendCertificateEmail sends course completion certificate
+func SendCertificateEmail(to, name, courseTitle, certificateURL, verificationCode string) error {
+	subject := "🎓 Course Completed! Your LearnHub Certificate"
+
+	body := fmt.Sprintf(`
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<style>
+				body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+				.container { max-width: 600px; margin: 0 auto; background: #ffffff; }
+				.header { background: linear-gradient(135deg, #8b5cf6 0%%, #7c3aed 100%%); color: white; padding: 40px 20px; text-align: center; }
+				.content { padding: 30px; background: #f8fafc; }
+				.certificate-box { background: white; padding: 25px; border-radius: 10px; border: 3px solid #e2e8f0; margin: 20px 0; text-align: center; }
+				.download-button { display: inline-block; padding: 15px 30px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin: 15px 0; }
+				.verification { background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 15px 0; }
+				.footer { padding: 20px; text-align: center; color: #64748b; font-size: 14px; background: #1e293b; color: white; }
+			</style>
+		</head>
+		<body>
+			<div class="container">
+				<div class="header">
+					<h1>Congratulations! 🎉</h1>
+					<p>You've successfully completed your course</p>
+				</div>
+				<div class="content">
+					<h2>Hello %s,</h2>
+					<p>We're thrilled to inform you that you've successfully completed the course:</p>
+					
+					<div class="certificate-box">
+						<h3 style="color: #8b5cf6;">🏆 Course Completion Certificate</h3>
+						<p><strong>Course:</strong> %s</p>
+						<p><strong>Completed on:</strong> %s</p>
+						<p><strong>Certificate ID:</strong> %s</p>
+						
+						<center>
+							<a href="%s" class="download-button">Download Certificate</a>
+						</center>
+					</div>
+					
+					<div class="verification">
+						<h4>🔍 Certificate Verification</h4>
+						<p>Share your achievement! Others can verify your certificate using:</p>
+						<p><strong>Verification Code:</strong> %s</p>
+						<p>Or visit: http://localhost:8080/api/verify-certificate?code=%s</p>
+					</div>
+					
+					<p>Your dedication and hard work have paid off. This certificate represents your commitment to learning and skill development.</p>
+					
+					<p>Share your achievement on LinkedIn and other professional networks!</p>
+					
+					<p>Ready for your next learning adventure?</p>
+					<center>
+						<a href="http://localhost:8080/api/courses" style="display: inline-block; padding: 12px 30px; background: #3b82f6; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">Explore More Courses</a>
+					</center>
+					
+					<p>Congratulations once again!<br><strong>The LearnHub Team</strong></p>
+				</div>
+				<div class="footer">
+					<p>&copy; 2024 LearnHub. All rights reserved.</p>
+				</div>
+			</div>
+		</body>
+		</html>
+	`, name, courseTitle, time.Now().Format("January 2, 2006"), "CERT-ID", certificateURL, verificationCode, verificationCode)
 
 	return SendEmail(EmailData{
 		To:      to,

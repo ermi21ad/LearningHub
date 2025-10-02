@@ -21,6 +21,11 @@ type User struct {
 	VerificationToken  string     `gorm:"type:varchar(255);uniqueIndex" json:"-"`
 	VerificationSentAt *time.Time `json:"verification_sent_at"`
 
+	// Password Reset Fields
+	ResetToken     string     `gorm:"type:varchar(255);uniqueIndex" json:"-"`
+	ResetSentAt    *time.Time `json:"reset_sent_at"`
+	ResetExpiresAt *time.Time `json:"-"`
+
 	// Relationships
 	Courses     []Course     `gorm:"foreignKey:InstructorID" json:"courses,omitempty"`
 	Enrollments []Enrollment `gorm:"foreignKey:UserID" json:"enrollments,omitempty"`

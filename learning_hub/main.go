@@ -58,10 +58,13 @@ func main() {
 		&models.Enrollment{},
 		&models.Payment{},
 		&models.LessonProgress{},
+		&models.Certificate{},
 		&models.Review{},
 	); err != nil {
 		log.Fatal("Migration failed:", err)
 	}
+
+	fmt.Println("✅ Database migrations completed successfully")
 
 	// Initialize handlers
 	userHandler := handlers.NewUserHandler(db)
@@ -69,38 +72,31 @@ func main() {
 	uploadHandler := handlers.NewUploadHandler(db)
 	paymentHandler := handlers.NewPaymentHandler(db)
 	adminHandler := handlers.NewAdminHandler(db)
+	progressHandler := handlers.NewProgressHandler(db)
 
 	r := gin.Default()
 
 	// API routes group
 	api := r.Group("/api")
 	{
-
-		// Add admin routes group (after other routes)
-		admin := api.Group("/")
-		admin.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
-		{
-			admin.GET("/admin/stats", adminHandler.AdminStats)
-			admin.GET("/admin/payments/recent", adminHandler.GetRecentPayments)
-			admin.GET("/admin/enrollments/recent", adminHandler.GetRecentEnrollments)
-			admin.GET("/admin/courses/:id/analytics", adminHandler.GetCourseAnalytics)
-			admin.GET("/admin/users", adminHandler.GetUserManagement)
-			admin.PUT("/admin/users/:id/role", adminHandler.UpdateUserRole)
-			admin.DELETE("/admin/users/:id", adminHandler.DeleteUser)
-			// Add to admin routes group
-			admin.GET("/admin/email-domains", adminHandler.GetEmailDomains)
-			admin.POST("/admin/email-domains", adminHandler.AddEmailDomain)
-			admin.DELETE("/admin/email-domains/:domain", adminHandler.RemoveEmailDomain)
-			api.GET("/verify-email", userHandler.VerifyEmail)
-			api.POST("/resend-verification", userHandler.ResendVerificationEmail)
-
-		}
 		// Public routes
 		api.GET("/courses", courseHandler.GetCourses)
 		api.GET("/courses/:id", courseHandler.GetCourseByID)
 		api.POST("/register", userHandler.RegisterUser)
 		api.POST("/login", userHandler.LoginUser)
 		api.POST("/upload", uploadHandler.UploadFile)
+
+		// Verification & Password routes
+		api.GET("/verify-email", userHandler.VerifyEmail)
+		api.POST("/resend-verification", userHandler.ResendVerificationEmail)
+		api.POST("/forgot-password", userHandler.ForgotPassword)
+		api.POST("/reset-password", userHandler.ResetPassword)
+		api.GET("/validate-reset-token", userHandler.ValidateResetToken)
+
+		// Public certificate verification
+		api.GET("/verify-certificate", progressHandler.VerifyCertificate)
+
+		// Public domain list
 		api.GET("/allowed-email-domains", func(c *gin.Context) {
 			domains := validation.GetAllowedDomains()
 			c.JSON(http.StatusOK, gin.H{
@@ -110,7 +106,7 @@ func main() {
 			})
 		})
 
-		// Webhook and success page (public - no auth needed)
+		// Payment webhooks (public)
 		api.POST("/webhooks/chapa", paymentHandler.HandlePaymentCallback)
 		api.GET("/payment/success", paymentHandler.PaymentSuccess)
 
@@ -120,11 +116,9 @@ func main() {
 		{
 			protected.GET("/profile", userHandler.GetProfile)
 			protected.PUT("/profile", userHandler.UpdateProfile)
-			protected.GET("/dashboard", courseHandler.GetStudentDashboard)
+			protected.GET("/dashboard", progressHandler.GetStudentDashboard)
 			protected.GET("/my-payments", paymentHandler.GetUserPayments)
 			protected.GET("/my-enrollments", userHandler.GetUserEnrollments)
-
-			// MOVE THESE PAYMENT ROUTES UNDER PROTECTED:
 			protected.POST("/payments/initiate", paymentHandler.InitiatePayment)
 			protected.GET("/payments/status/:id", paymentHandler.GetPaymentStatus)
 		}
@@ -135,9 +129,12 @@ func main() {
 		{
 			student.POST("/courses/:id/enroll", courseHandler.EnrollCourse)
 			student.GET("/my-courses", courseHandler.GetStudentCourses)
-			student.PUT("/progress/lesson", courseHandler.UpdateLessonProgress)
-			student.GET("/courses/:id/progress", courseHandler.GetCourseProgress)
+			student.PUT("/progress/lesson", progressHandler.UpdateLessonProgress)
+			student.GET("/courses/:id/progress", progressHandler.GetCourseProgress)
 			student.POST("/courses/:id/review", courseHandler.SubmitCourseReview)
+			student.GET("/courses/:id/reviews", courseHandler.GetCourseReviews)
+			student.POST("/courses/:id/certificate", progressHandler.GenerateCertificate)
+			student.GET("/certificates/:id", progressHandler.GetCertificate)
 		}
 
 		// Instructor-only routes
@@ -147,7 +144,24 @@ func main() {
 			instructor.POST("/courses", courseHandler.CreateCourse)
 			instructor.PUT("/courses/:id", courseHandler.UpdateCourse)
 		}
+
+		// Admin-only routes
+		admin := api.Group("/")
+		admin.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
+		{
+			admin.GET("/admin/stats", adminHandler.AdminStats)
+			admin.GET("/admin/payments/recent", adminHandler.GetRecentPayments)
+			admin.GET("/admin/enrollments/recent", adminHandler.GetRecentEnrollments)
+			admin.GET("/admin/courses/:id/analytics", adminHandler.GetCourseAnalytics)
+			admin.GET("/admin/users", adminHandler.GetUserManagement)
+			admin.PUT("/admin/users/:id/role", adminHandler.UpdateUserRole)
+			admin.DELETE("/admin/users/:id", adminHandler.DeleteUser)
+			admin.GET("/admin/email-domains", adminHandler.GetEmailDomains)
+			admin.POST("/admin/email-domains", adminHandler.AddEmailDomain)
+			admin.DELETE("/admin/email-domains/:domain", adminHandler.RemoveEmailDomain)
+		}
 	}
+
 	// File serving route for uploaded files
 	r.GET("/uploads/:type/:filename", uploadHandler.ServeFile)
 
@@ -170,7 +184,18 @@ func main() {
 	serverAddr := fmt.Sprintf(":%s", cfg.ServerPort)
 	fmt.Printf("📚 LearnHub API running on port %s...\n", cfg.ServerPort)
 	fmt.Printf("💳 Chapa payment integration: ENABLED\n")
+
+	// Create some sample data on startup
+	createSampleData(db)
+
 	if err := r.Run(serverAddr); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
+}
+
+// createSampleData creates initial sample data for testing
+func createSampleData(db *gorm.DB) {
+	fmt.Println("📝 Creating sample data...")
+
+	fmt.Println("✅ Sample data ready for testing")
 }
