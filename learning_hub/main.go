@@ -50,6 +50,7 @@ func main() {
 	}
 
 	// Auto migrate models
+	// Add to your existing AutoMigrate
 	if err := db.AutoMigrate(
 		&models.User{},
 		&models.Course{},
@@ -60,10 +61,15 @@ func main() {
 		&models.LessonProgress{},
 		&models.Certificate{},
 		&models.Review{},
+		&models.Quiz{},
+		&models.QuizQuestion{},
+		&models.QuizAttempt{},
+		&models.QuizAnswer{},
+		&models.Assignment{},
+		&models.AssignmentSubmission{},
 	); err != nil {
 		log.Fatal("Migration failed:", err)
 	}
-
 	fmt.Println("✅ Database migrations completed successfully")
 
 	// Initialize handlers
@@ -73,6 +79,8 @@ func main() {
 	paymentHandler := handlers.NewPaymentHandler(db)
 	adminHandler := handlers.NewAdminHandler(db)
 	progressHandler := handlers.NewProgressHandler(db)
+	lessonHandler := handlers.NewLessonHandler(db)
+	assessmentHandler := handlers.NewAssessmentHandler(db)
 
 	r := gin.Default()
 
@@ -143,6 +151,9 @@ func main() {
 		{
 			instructor.POST("/courses", courseHandler.CreateCourse)
 			instructor.PUT("/courses/:id", courseHandler.UpdateCourse)
+			instructor.DELETE("/courses/:id", courseHandler.DeleteCourse)
+			instructor.GET("/instructor/courses", courseHandler.GetInstructorCourses)
+			instructor.POST("/courses/:id/modules", courseHandler.CreateModule)
 		}
 
 		// Admin-only routes
@@ -159,6 +170,37 @@ func main() {
 			admin.GET("/admin/email-domains", adminHandler.GetEmailDomains)
 			admin.POST("/admin/email-domains", adminHandler.AddEmailDomain)
 			admin.DELETE("/admin/email-domains/:domain", adminHandler.RemoveEmailDomain)
+		}
+
+		// Lesson routes
+		lessonRoutes := api.Group("/lessons")
+		{
+			lessonRoutes.POST("", middleware.AuthMiddleware(), middleware.InstructorOnly(), lessonHandler.CreateLesson)
+			lessonRoutes.GET("/:id", middleware.AuthMiddleware(), lessonHandler.GetLesson)
+			lessonRoutes.PUT("/:id", middleware.AuthMiddleware(), middleware.InstructorOnly(), lessonHandler.UpdateLesson)
+			lessonRoutes.DELETE("/:id", middleware.AuthMiddleware(), middleware.InstructorOnly(), lessonHandler.DeleteLesson)
+			lessonRoutes.PUT("/:id/progress", middleware.AuthMiddleware(), lessonHandler.UpdateLessonProgress)
+			lessonRoutes.GET("/module/:moduleId", middleware.AuthMiddleware(), lessonHandler.GetModuleLessons)
+			lessonRoutes.GET("/:id/analytics", middleware.AuthMiddleware(), middleware.InstructorOnly(), lessonHandler.GetLessonAnalytics)
+		}
+		assessmentRoutes := api.Group("/assessments")
+		{
+			// Quiz routes
+			assessmentRoutes.POST("/quizzes", middleware.AuthMiddleware(), middleware.InstructorOnly(), assessmentHandler.CreateQuiz)
+			assessmentRoutes.POST("/quizzes/:quizId/attempt", middleware.AuthMiddleware(), assessmentHandler.StartQuizAttempt)
+			assessmentRoutes.POST("/attempts/:attemptId/answer", middleware.AuthMiddleware(), assessmentHandler.SubmitQuizAnswer)
+			assessmentRoutes.POST("/attempts/:attemptId/complete", middleware.AuthMiddleware(), assessmentHandler.CompleteQuizAttempt)
+			assessmentRoutes.GET("/quizzes/:quizId/attempts", middleware.AuthMiddleware(), assessmentHandler.GetStudentQuizAttempts)
+
+			// Assignment routes
+			assessmentRoutes.POST("/assignments", middleware.AuthMiddleware(), middleware.InstructorOnly(), assessmentHandler.CreateAssignment)
+			assessmentRoutes.POST("/assignments/:assignmentId/submit", middleware.AuthMiddleware(), assessmentHandler.SubmitAssignment)
+			assessmentRoutes.POST("/submissions/:submissionId/grade", middleware.AuthMiddleware(), middleware.InstructorOnly(), assessmentHandler.GradeAssignment)
+			assessmentRoutes.GET("/assignments/:assignmentId/submissions", middleware.AuthMiddleware(), assessmentHandler.GetStudentAssignmentSubmissions)
+
+			// Instructor analytics routes
+			assessmentRoutes.GET("/quizzes/:quizId/all-attempts", middleware.AuthMiddleware(), middleware.InstructorOnly(), assessmentHandler.GetQuizAttempts)
+			assessmentRoutes.GET("/assignments/:assignmentId/all-submissions", middleware.AuthMiddleware(), middleware.InstructorOnly(), assessmentHandler.GetAssignmentSubmissions)
 		}
 	}
 

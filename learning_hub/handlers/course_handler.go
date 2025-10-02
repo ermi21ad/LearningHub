@@ -741,3 +741,73 @@ func shouldForceDownload(filePath string) bool {
 
 	return dangerousExtensions[ext]
 }
+
+// (Removed duplicate CreateModule method)
+func (h *CourseHandler) DeleteCourse(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.DB.Delete(&models.Course{}, "id = ?", id).Error; err != nil {
+		c.JSON(500, gin.H{"error": "Failed to delete course"})
+		return
+	}
+	c.JSON(200, gin.H{"message": "Course deleted successfully"})
+}
+
+// GetInstructorCourses returns all courses for the authenticated instructor
+func (h *CourseHandler) GetInstructorCourses(c *gin.Context) {
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(401, gin.H{"error": "Unauthorized"})
+		return
+	}
+	instructorID := user.(*models.User).ID
+	var courses []models.Course
+	if err := h.DB.Where("instructor_id = ?", instructorID).Find(&courses).Error; err != nil {
+		c.JSON(500, gin.H{"error": "Failed to fetch courses"})
+		return
+	}
+	c.JSON(200, gin.H{"courses": courses})
+}
+
+// CreateModule creates a new module for a course
+func (h *CourseHandler) CreateModule(c *gin.Context) {
+	courseID := c.Param("id")
+
+	var input struct {
+		Title       string `json:"title" binding:"required"`
+		Description string `json:"description"`
+		OrderIndex  int    `json:"order_index"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Verify course exists
+	var course models.Course
+	if err := h.DB.First(&course, courseID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Course not found"})
+		return
+	}
+
+	// Check if user is the course instructor
+	userID, exists := c.Get("userID")
+	if !exists || course.InstructorID != userID.(uint) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized to modify this course"})
+		return
+	}
+
+	module := models.Module{
+		Title:       input.Title,
+		Description: input.Description,
+		OrderIndex:  input.OrderIndex,
+		CourseID:    course.ID,
+	}
+
+	if err := h.DB.Create(&module).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create module"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, module)
+}

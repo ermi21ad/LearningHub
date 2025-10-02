@@ -9,7 +9,7 @@ BASE_URL="http://localhost:8080/api"
 ADMIN_EMAIL="ermiasabebe1808@gmail.com"           # Change to your real admin email
 INSTRUCTOR_EMAIL="nobodyknowme6533@gmail.com" # Change to your real instructor email  
 STUDENT_EMAIL="jerbawjerbex@gmail.com"       # Change to your real student email
-PASSWORD="TestPassword123"                         # Strong test password
+PASSWORD="password123"                         # Strong test password
 
 # Colors for output
 RED='\033[0;31m'

@@ -1,304 +1,347 @@
-# 🎓 LearningHub Backend
+🎓 LearningHub Backend
+LearningHub is a complete backend system for an e-learning platform built with Golang (Gin Framework), PostgreSQL, and GORM. It supports secure authentication, course management, content delivery, assessment system, payments (Chapa), student progress tracking, certificates, email notifications, and admin dashboards.
 
-LearningHub is a **backend system for an e-learning platform** built with **Golang (Gin Framework)**, **PostgreSQL**, and **GORM**.
-It supports **secure authentication, course management, payments (Chapa), student progress tracking, certificates, email notifications, and admin dashboards**.
+🚀 Major Updates & New Features
+🎯 Advanced Content Delivery System ✅
+Lesson Management: Create, read, update, delete lessons within modules
 
----
+Rich Content Support: Videos, PDFs, documents, presentations, and text content
 
-## 📂 Project Structure
+Progress Tracking: Time-based progress tracking and completion status
 
-```
+Course Curriculum: Structured module-lesson hierarchy with prerequisites
+
+File Storage: Local and S3-compatible storage support
+
+📝 Comprehensive Assessment System ✅
+Quiz Engine: Multiple choice, true/false, short answer, and coding questions
+
+Assignment System: File uploads and text submissions with grading
+
+Automatic Grading: Real-time scoring and pass/fail evaluation
+
+Attempt Management: Time limits and maximum attempt controls
+
+Instructor Analytics: Student performance insights and engagement metrics
+
+📂 Updated Project Structure
+text
 learning_hub/
-│── handlers/          # API route handlers (controllers)
-│── middleware/        # JWT auth, role-based access, logging
-│── models/            # Database models (GORM)
-│── pkg/               # Utility packages (email, JWT, file upload, payments)
-│── uploads/           # Uploaded files (images, videos, PDFs)
-│── .env               # Environment variables
-│── .gitignore
-│── go.mod / go.sum    # Dependencies
-│── main.go            # Application entry point
-│── README.md
-│── test_all_apis_real.sh      # End-to-end testing
-│── test_payment_flow.sh       # Payment test script
-│── test_webhook.sh            # Webhook test script
-```
+│── handlers/              # API route handlers
+│   ├── user_handler.go    # User authentication & management
+│   ├── course_handler.go  # Course CRUD & enrollment
+│   ├── lesson.go          # Lesson management & progress tracking ✅ NEW
+│   ├── assessment.go      # Quizzes & assignments ✅ NEW
+│   ├── payment.go         # Chapa payment integration
+│   ├── progress.go        # Progress tracking & certificates
+│   ├── admin.go           # Admin dashboard & user management
+│   └── upload.go          # File upload handling
+│
+│── middleware/            # Authentication & authorization
+│   ├── auth.go            # JWT validation
+│   ├── instructor.go      # Instructor role middleware
+│   ├── student.go         # Student role middleware
+│   └── admin.go           # Admin role middleware
+│
+│── models/                # Database models
+│   ├── user.go           # User accounts & profiles
+│   ├── course.go         # Courses, modules, lessons
+│   ├── assessment.go     # Quizzes, assignments, attempts ✅ NEW
+│   ├── payment.go        # Payment transactions
+│   ├── progress.go       # Progress tracking
+│   └── certificate.go    # Certificate generation
+│
+│── pkg/                   # Utility packages
+│   ├── config/           # Configuration management
+│   ├── jwt/              # JWT token handling
+│   ├── email/            # SMTP email service
+│   ├── chapa/            # Payment gateway integration
+│   ├── fileupload/       # Secure file upload handling
+│   ├── validation/       # Input validation
+│   └── storage/          # File storage (local/S3) ✅ NEW
+│
+│── uploads/              # Uploaded files
+│   ├── images/          # Course images & thumbnails
+│   ├── videos/          # Lesson videos ✅ NEW
+│   ├── documents/       # PDFs & lesson materials ✅ NEW
+│   └── assignments/     # Student submissions ✅ NEW
+│
+│── main.go              # Application entry point
+│── .env                 # Environment configuration
+│── go.mod / go.sum      # Dependencies
+│── README.md           # This file
+│── test_*.sh           # Comprehensive test scripts
+🎯 Complete Feature Set
+🔐 Authentication & Authorization
+JWT-based authentication with secure token validation
 
----
+Role-based access control (Student, Instructor, Admin)
 
-## 🚀 Features
+Email verification system with secure tokens
 
-* **🔐 Authentication & Authorization** (JWT, role-based access, password reset)
-* **📧 Email Notifications & Verification** (SMTP integration, email verification, password reset)
-* **📚 Course Management** (create, update, enroll, reviews, categories)
-* **💳 Payment Integration** with Chapa (initiate, verify, webhooks)
-* **📊 Progress Tracking** (lesson completion, certificates, dashboards)
-* **👨‍💼 Admin Tools** (user management, course analytics, payment reports)
-* **🛠️ Utilities** (file upload, health check, allowed email domains)
+Password reset functionality with email delivery
 
----
-## 📧 Email Notifications & Verification
+📚 Course Management System
+Course creation, categorization, and publishing
 
-The platform integrates **SMTP-based email notifications** for user communication and security flows.
+Module-based curriculum organization
 
-* **Email Verification:**
+Student enrollment with payment integration
 
-  * New users receive an email with a verification link.
-  * Only verified accounts can access full platform features.
-* **Password Reset:**
+Course reviews and rating system
 
-  * Forgot password flow sends a secure reset token via email.
-  * Token must be validated before setting a new password.
-* **System Notifications:**
+Instructor dashboard with course analytics
 
-  * Confirmation emails for enrollments and payments.
-  * Admin and instructors receive alerts for new activities.
+🎥 Content Delivery System ✅ NEW
+Lesson Management: Full CRUD operations for lessons
 
-### Email APIs
+Multi-format Support: Videos, PDFs, documents, presentations
 
-* `GET /api/verify-email` → Verify email via token
-* `POST /api/resend-verification` → Resend verification email
-* `POST /api/forgot-password` → Request reset link
-* `GET /api/validate-reset-token` → Validate reset token
-* `POST /api/reset-password` → Reset password
----
-## 🔐 Authentication & Authorization
+Progress Tracking: Real-time student progress monitoring
 
-The platform uses **JWT-based authentication** with role-based access control to secure user operations.
+Time Tracking: Track time spent on each lesson
 
-* **JWT Authentication:**
+Completion System: Mark lessons as completed
 
-  * Each login generates a signed JWT token.
-  * Tokens are required for all protected routes.
-* **Role-Based Access:**
+Curriculum Structure: Organized module-lesson hierarchy
 
-  * Users have roles (Admin, Instructor, Student).
-  * Role-based middleware restricts actions (e.g., only instructors can create courses).
-* **Password Reset:**
+📝 Assessment System ✅ NEW
+Quiz Engine:
 
-  * Users can request password reset links via email.
-  * Secure tokens ensure safe password updates.
+Multiple question types (multiple choice, true/false, short answer, coding)
 
-### Auth APIs
+Automatic grading and scoring
 
-* `POST /api/register` → Register new user
-* `POST /api/login` → Login & issue JWT
-* `GET /api/profile` → Get user profile
-* `PUT /api/profile` → Update profile
+Time limits and attempt restrictions
 
----
+Passing score thresholds
 
-## 📚 Course Management
+Assignment System:
 
-Comprehensive tools for creating, managing, and engaging with courses.
+File upload submissions (PDF, code, documents)
 
-* **Course Creation & Update:**
+Text-based submissions
 
-  * Instructors can create, edit, and categorize courses.
-* **Enrollment:**
+Instructor grading with feedback
 
-  * Students enroll in courses with or without payment.
-* **Reviews & Ratings:**
+Due date management
 
-  * Students can leave feedback for quality assurance.
-* **Categories & Search:**
+Analytics:
 
-  * Courses can be grouped and filtered for easier discovery.
+Student performance insights
 
-### Course APIs
+Quiz attempt analytics
 
-* `GET /api/courses` → List all courses
-* `POST /api/courses` → Create course *(Instructor only)*
-* `PUT /api/courses/:id` → Update course
-* `POST /api/courses/:id/enroll` → Enroll student
+Assignment submission tracking
 
----
+💳 Payment Integration
+Chapa payment gateway integration
 
-## 💳 Payment Integration with Chapa
+Secure payment initiation and verification
 
-The system integrates with **Chapa Payments** for seamless transactions.
+Webhook handling for payment confirmation
 
-* **Payment Initiation:**
+Payment history and receipt generation
 
-  * Students initiate payments for paid courses.
-* **Payment Verification:**
+📊 Progress & Certification
+Comprehensive progress tracking across courses
 
-  * Server validates payment status with Chapa API.
-* **Webhooks:**
+Automatic certificate generation upon course completion
 
-  * Real-time notifications ensure secure transaction updates.
+Certificate verification system
 
-### Payment APIs
+Student learning dashboard with statistics
 
-* `POST /api/payments/initiate` → Start a payment
-* `GET /api/payments/status/:id` → Verify payment status
-* `POST /api/webhooks/chapa` → Handle Chapa webhook
+👨‍💼 Admin Management
+User management and role assignment
 
----
+Platform analytics and statistics
 
-## 📊 Progress Tracking
+Course and payment monitoring
 
-Students and instructors can monitor progress and achievements.
+System configuration management
 
-* **Lesson Completion:**
+🛠️ API Endpoints Overview
+🔐 Authentication & Users
+POST /api/register - User registration
 
-  * Each lesson marked as completed is stored in DB.
-* **Dashboards:**
+POST /api/login - User login with JWT
 
-  * Students see course progress visually.
-  * Instructors view student performance.
-* **Certificates:**
+GET /api/profile - Get user profile
 
-  * Auto-generated on course completion.
-  * Certificates can be downloaded or verified.
+PUT /api/profile - Update profile
 
-### Progress APIs
+Email verification and password reset endpoints
 
-* `PUT /api/progress/lesson` → Update lesson progress
-* `POST /api/courses/:id/certificate` → Generate certificate
-* `GET /api/certificates/:id` → Fetch certificate
+📚 Course Management
+GET /api/courses - List all published courses
 
----
+POST /api/courses - Create new course (Instructor)
 
-## 👨‍💼 Admin Tools
+PUT /api/courses/:id - Update course (Instructor)
 
-Powerful tools for admins to manage the platform.
+POST /api/courses/:id/enroll - Enroll in course (Student)
 
-* **User Management:**
+GET /api/courses/:id - Get course details with curriculum
 
-  * Create, update, or deactivate users.
-  * Assign roles (Admin, Instructor, Student).
-* **Course Analytics:**
+🎥 Lesson Management ✅ NEW
+POST /api/lessons - Create lesson (Instructor)
 
-  * Insights into most popular courses, enrollments, revenue.
-* **Payment Reports:**
+GET /api/lessons/:id - Get lesson with progress
 
-  * Track successful/failed transactions.
+PUT /api/lessons/:id - Update lesson (Instructor)
 
-### Admin APIs
+PUT /api/lessons/:id/progress - Update lesson progress (Student)
 
-* `GET /api/admin/stats` → Get platform stats
-* `GET /api/admin/users` → List all users
-* `PUT /api/admin/users/:id/role` → Update user role
+GET /api/lessons/module/:moduleId - Get all lessons in module
 
----
+GET /api/lessons/:id/analytics - Get lesson analytics (Instructor)
 
-## 🛠️ Utilities
+📝 Assessment System ✅ NEW
+Quizzes:
 
-Helper features to improve system usability and security.
+POST /api/assessments/quizzes - Create quiz (Instructor)
 
-* **File Uploads:**
+POST /api/assessments/quizzes/:quizId/attempt - Start quiz attempt (Student)
 
-  * Supports video, PDFs, and images.
-  * Stored in `uploads/` with unique naming.
-* **Health Check:**
+POST /api/assessments/attempts/:attemptId/answer - Submit answer (Student)
 
-  * Endpoint to confirm API is running.
-* **Allowed Email Domains:**
+POST /api/assessments/attempts/:attemptId/complete - Complete attempt (Student)
 
-  * Restricts registration to trusted domains.
+Assignments:
 
-### Utility APIs
+POST /api/assessments/assignments - Create assignment (Instructor)
 
-* `POST /api/upload` → Upload file
-* `GET /api/health` → Check API health
-* (Config) Restrict user registration domain
+POST /api/assessments/assignments/:assignmentId/submit - Submit assignment (Student)
 
+POST /api/assessments/submissions/:submissionId/grade - Grade submission (Instructor)
 
+💳 Payments
+POST /api/payments/initiate - Initiate payment
 
----
+GET /api/payments/status/:id - Check payment status
 
-## 🌐 API Endpoints (Highlights)
+POST /api/webhooks/chapa - Payment webhook handler
 
-### 🔐 Authentication
+📊 Progress & Certificates
+PUT /api/progress/lesson - Update lesson completion
 
-* `POST /api/register` → Register new user
-* `POST /api/login` → Login & get token
-* `GET /api/profile` → Get logged-in user profile
-* `PUT /api/profile` → Update profile
+GET /api/courses/:id/progress - Get course progress
 
-### 📚 Courses
+POST /api/courses/:id/certificate - Generate certificate
 
-* `GET /api/courses` → Public list of courses
-* `POST /api/courses` → Create course *(Instructor only)*
-* `POST /api/courses/:id/enroll` → Enroll in a course *(Student only)*
+GET /api/certificates/:id - Get certificate
 
-### 💳 Payments
+👨‍💼 Admin
+GET /api/admin/stats - Platform statistics
 
-* `POST /api/payments/initiate` → Start payment
-* `GET /api/payments/status/:id` → Check payment status
-* `POST /api/webhooks/chapa` → Chapa webhook
+GET /api/admin/users - User management
 
-### 📊 Progress & Certificates
+PUT /api/admin/users/:id/role - Update user roles
 
-* `PUT /api/progress/lesson` → Update lesson progress
-* `POST /api/courses/:id/certificate` → Generate certificate
-* `GET /api/certificates/:id` → Get student certificate
+🎯 Complete Learning Workflow
+For Students:
+Browse & Enroll → Explore courses and enroll (free/paid)
 
-### 👨‍💼 Admin
+Learn → Watch videos, read materials, track progress
 
-* `GET /api/admin/stats` → Platform stats
-* `GET /api/admin/users` → Manage users
-* `PUT /api/admin/users/:id/role` → Assign roles
+Assess → Take quizzes, submit assignments
 
----
+Track → Monitor progress, earn certificates
 
-## 🎯 Sample Email Flow
+Review → Provide course feedback and ratings
 
-**Resend Verification Email**
+For Instructors:
+Create → Build courses with modules and lessons
 
-```http
-POST http://localhost:8080/api/resend-verification
-Content-Type: application/json
+Deliver → Upload content in multiple formats
 
-{
-  "email": "student@example.com"
-}
-```
+Assess → Create quizzes and assignments
 
-**Forgot Password**
+Monitor → Track student progress and performance
 
-```http
-POST http://localhost:8080/api/forgot-password
-Content-Type: application/json
+Engage → Grade assignments and provide feedback
 
-{
-  "email": "student@example.com"
-}
-```
+For Admins:
+Manage → Users, courses, and system settings
 
-**Reset Password**
+Monitor → Platform health and performance
 
-```http
-POST http://localhost:8080/api/reset-password
-Content-Type: application/json
+Analyze → Business metrics and user engagement
 
-{
-  "token": "VALID_RESET_TOKEN",
-  "new_password": "newSecurePass123"
-}
-```
+Support → User inquiries and system maintenance
 
----
+🚀 Quick Start
+Prerequisites
+Go 1.19+
 
-## 📋 Testing
+PostgreSQL 12+
 
-Run provided scripts for full coverage:
+SMTP server (for emails)
 
-```bash
-./test_all_apis_real.sh       # Test all major APIs
-./test_payment_flow.sh        # Test Chapa payment integration
-./test_webhook.sh             # Test webhook handling
-```
+Chapa account (for payments)
 
-Or test step by step in **Postman**, following the structured API sequence.
+Setup
+Clone repository and install dependencies
 
----
+Configure environment variables in .env
 
-## 📬 Contact
+Run database migrations
 
-👤 **Your Name**
-🔗 LinkedIn: [ermias-abebe-zewdie](https://linkedin.com/in/ermias-abebe-zewdie)
-💻 GitHub: [@ermi21ad](https://github.com/ermi21ad)
+Start the server: go run main.go
 
----
+Testing
+bash
+# Test complete system
+./test_all_apis_real.sh
+
+# Test payment flow
+./test_payment_flow.sh
+
+# Test specific components
+./test_content_delivery.sh
+./test_assessment_system.sh
+📊 System Architecture
+text
+Frontend Clients → API Gateway → LearningHub Backend → PostgreSQL
+                              │
+                              → File Storage (Local/S3)
+                              → Email Service (SMTP)
+                              → Payment Gateway (Chapa)
+                              → Analytics & Monitoring
+🔧 Technology Stack
+Backend: Golang, Gin Framework, GORM
+
+Database: PostgreSQL with proper indexing
+
+Authentication: JWT with role-based access
+
+File Storage: Local filesystem + S3 compatibility
+
+Payments: Chapa integration with webhooks
+
+Email: SMTP with templated notifications
+
+Testing: Comprehensive test scripts
+
+🎉 Production Ready Features
+✅ Security: JWT auth, input validation, secure file uploads
+
+✅ Performance: Database indexing, efficient queries
+
+✅ Scalability: Modular architecture, storage flexibility
+
+✅ Monitoring: Health checks, error logging
+
+✅ Documentation: Comprehensive API documentation
+
+✅ Testing: End-to-end test coverage
+
+📬 Contact & Support
+👤 Ermias Abebe
+📧 Email: ermiasabebezewdie@gmail.com
+🔗 Portfolio: https://ermias-abebe-portfolio.vercel.app/
+💻 GitHub: @ermi21ad
+🌐 LinkedIn: Ermias Abebe
+
+LearningHub - A complete, production-ready e-learning platform backend that scales from small courses to enterprise learning management systems. 🚀

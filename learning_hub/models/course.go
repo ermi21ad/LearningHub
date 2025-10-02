@@ -87,3 +87,15 @@ type Review struct {
 	User      User      `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Course    Course    `gorm:"foreignKey:CourseID" json:"course,omitempty"`
 }
+
+func (lp *LessonProgress) CalculateProgressPercentage(totalDuration int) float64 {
+	if totalDuration == 0 {
+		return 0
+	}
+	// Convert time spent (minutes) to percentage based on lesson duration
+	progress := (float64(lp.TimeSpent) / float64(totalDuration)) * 100
+	if progress > 100 {
+		return 100
+	}
+	return progress
+}
