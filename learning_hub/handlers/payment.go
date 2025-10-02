@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"learning_hub/models"
 	"learning_hub/pkg/chapa"
+	"learning_hub/pkg/email" // Add this import
 	"net/http"
 	"strings"
 	"time"
@@ -105,7 +106,7 @@ func (h *PaymentHandler) InitiatePayment(c *gin.Context) {
 
 		c.JSON(http.StatusOK, gin.H{
 			"message":         "TEST MODE: Payment completed successfully",
-			"checkout_url":    "https://chapa.co/test-mode",
+			"checkout_url":    "https://chapa.co/test-mode  ",
 			"transaction_ref": txRef,
 			"payment_id":      payment.ID,
 			"test_mode":       true,
@@ -122,7 +123,7 @@ func (h *PaymentHandler) InitiatePayment(c *gin.Context) {
 		LastName:    user.LastName,
 		PhoneNumber: user.Phone,
 		TxRef:       txRef,
-		CallbackURL: "https://webhook.site/f661bb23-ccc5-478f-8c9e-c835551834c6",
+		CallbackURL: "https://webhook.site/f661bb23-ccc5-478f-8c9e-c835551834c6  ",
 		ReturnURL:   "http://localhost:8080/api/payment/success",
 		Customization: chapa.Customization{
 			Title:       "LearnHub", // Shortened to meet 16 char limit
@@ -226,6 +227,22 @@ func (h *PaymentHandler) HandlePaymentCallback(c *gin.Context) {
 				// Don't return error - we still want to acknowledge the webhook
 			} else {
 				fmt.Printf("✅ Enrollment created: UserID=%d, CourseID=%d\n", payment.UserID, payment.CourseID)
+
+				// Send email notifications
+				go func() {
+					// Send payment success email to student
+					var user models.User
+					var course models.Course
+					h.db.First(&user, payment.UserID)
+					h.db.First(&course, payment.CourseID)
+
+					email.SendPaymentSuccessEmail(user.Email, user.FirstName, course.Title, payment.Amount, "ETB")
+
+					// Send enrollment notification to instructor
+					var instructor models.User
+					h.db.First(&instructor, course.InstructorID)
+					email.SendEnrollmentNotification(instructor.Email, instructor.FirstName, user.FirstName, course.Title)
+				}()
 			}
 		} else {
 			fmt.Printf("ℹ️ Enrollment already exists: ID=%d\n", existingEnrollment.ID)

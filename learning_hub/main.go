@@ -7,8 +7,11 @@ import (
 	"learning_hub/models"
 	"learning_hub/pkg/chapa"
 	"learning_hub/pkg/config"
+	"learning_hub/pkg/email"
 	"learning_hub/pkg/fileupload"
+	"learning_hub/pkg/validation"
 	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
@@ -21,6 +24,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to load configuration:", err)
 	}
+	email.Init(cfg)
 
 	fmt.Printf("🚀 Starting LearnHub API in %s mode...\n", cfg.ServerEnv)
 
@@ -64,21 +68,47 @@ func main() {
 	courseHandler := handlers.NewCourseHandler(db)
 	uploadHandler := handlers.NewUploadHandler(db)
 	paymentHandler := handlers.NewPaymentHandler(db)
+	adminHandler := handlers.NewAdminHandler(db)
 
 	r := gin.Default()
 
 	// API routes group
-	// In your main.go, update the routes section:
-
-	// API routes group
 	api := r.Group("/api")
 	{
+
+		// Add admin routes group (after other routes)
+		admin := api.Group("/")
+		admin.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
+		{
+			admin.GET("/admin/stats", adminHandler.AdminStats)
+			admin.GET("/admin/payments/recent", adminHandler.GetRecentPayments)
+			admin.GET("/admin/enrollments/recent", adminHandler.GetRecentEnrollments)
+			admin.GET("/admin/courses/:id/analytics", adminHandler.GetCourseAnalytics)
+			admin.GET("/admin/users", adminHandler.GetUserManagement)
+			admin.PUT("/admin/users/:id/role", adminHandler.UpdateUserRole)
+			admin.DELETE("/admin/users/:id", adminHandler.DeleteUser)
+			// Add to admin routes group
+			admin.GET("/admin/email-domains", adminHandler.GetEmailDomains)
+			admin.POST("/admin/email-domains", adminHandler.AddEmailDomain)
+			admin.DELETE("/admin/email-domains/:domain", adminHandler.RemoveEmailDomain)
+			api.GET("/verify-email", userHandler.VerifyEmail)
+			api.POST("/resend-verification", userHandler.ResendVerificationEmail)
+
+		}
 		// Public routes
 		api.GET("/courses", courseHandler.GetCourses)
 		api.GET("/courses/:id", courseHandler.GetCourseByID)
 		api.POST("/register", userHandler.RegisterUser)
 		api.POST("/login", userHandler.LoginUser)
 		api.POST("/upload", uploadHandler.UploadFile)
+		api.GET("/allowed-email-domains", func(c *gin.Context) {
+			domains := validation.GetAllowedDomains()
+			c.JSON(http.StatusOK, gin.H{
+				"allowed_domains": domains,
+				"count":           len(domains),
+				"message":         "These are the supported email providers for registration",
+			})
+		})
 
 		// Webhook and success page (public - no auth needed)
 		api.POST("/webhooks/chapa", paymentHandler.HandlePaymentCallback)

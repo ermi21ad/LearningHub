@@ -187,6 +187,7 @@ func parseDuration(s string) time.Duration {
 }
 
 func validateConfig(config *Config) error {
+
 	// Validate database configuration
 	if config.DBHost == "" {
 		return fmt.Errorf("DB_HOST is required")
@@ -233,6 +234,17 @@ func validateConfig(config *Config) error {
 	}
 	if config.SMTPUsername == "" && config.SMTPPassword != "" {
 		return fmt.Errorf("SMTP_USERNAME is required when SMTP_PASSWORD is provided")
+	}
+	if config.SMTPHost != "" {
+		if config.SMTPUsername == "" {
+			return fmt.Errorf("SMTP_USERNAME is required when SMTP_HOST is provided")
+		}
+		if config.SMTPPassword == "" {
+			return fmt.Errorf("SMTP_PASSWORD is required when SMTP_HOST is provided")
+		}
+		if config.SMTPPort == 0 {
+			return fmt.Errorf("SMTP_PORT is required when SMTP_HOST is provided")
+		}
 	}
 
 	return nil

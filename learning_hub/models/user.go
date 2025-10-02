@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -11,8 +13,13 @@ type User struct {
 	LastName  string `gorm:"type:varchar(100);not null" json:"last_name"`
 	Email     string `gorm:"type:varchar(100);uniqueIndex;not null" json:"email"`
 	Password  string `gorm:"type:varchar(255);not null" json:"-"`
-	Phone     string `gorm:"type:varchar(20)" json:"phone"` // Add this field if missing
+	Phone     string `gorm:"type:varchar(20)" json:"phone"`
 	Role      string `gorm:"type:varchar(20);default:'student'" json:"role"`
+
+	// Email Verification Fields
+	EmailVerified      bool       `gorm:"default:false" json:"email_verified"`
+	VerificationToken  string     `gorm:"type:varchar(255);uniqueIndex" json:"-"`
+	VerificationSentAt *time.Time `json:"verification_sent_at"`
 
 	// Relationships
 	Courses     []Course     `gorm:"foreignKey:InstructorID" json:"courses,omitempty"`
