@@ -490,9 +490,11 @@ func SendVerificationSuccessEmail(to, name string) error {
 }
 
 // SendPasswordResetEmail sends password reset link
-func SendPasswordResetEmail(to, name, resetToken string) error {
-	subject := "🔐 Reset Your LearnHub Password"
-	resetURL := fmt.Sprintf("http://localhost:8080/api/reset-password?token=%s", resetToken)
+// SendPasswordResetEmail sends password reset with verification code
+func SendPasswordResetEmail(to, name, verificationCode string) error {
+	subject := "🔐 Reset Your LearnHub Password - Verification Code"
+	// Remove the reset URL since we're using a code now
+	// resetURL := fmt.Sprintf("http://localhost:5173/reset-password?token=%s", resetToken)
 
 	body := fmt.Sprintf(`
 		<!DOCTYPE html>
@@ -503,12 +505,12 @@ func SendPasswordResetEmail(to, name, resetToken string) error {
 				.container { max-width: 600px; margin: 0 auto; background: #ffffff; }
 				.header { background: linear-gradient(135deg, #f59e0b 0%%, #d97706 100%%); color: white; padding: 40px 20px; text-align: center; }
 				.content { padding: 30px; background: #f8fafc; }
-				.reset-box { background: white; padding: 25px; border-radius: 10px; border: 2px dashed #e2e8f0; margin: 20px 0; text-align: center; }
-				.reset-button { display: inline-block; padding: 15px 30px; background: #f59e0b; color: white; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin: 15px 0; }
-				.reset-code { background: #f1f5f9; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 18px; color: #1e293b; margin: 15px 0; }
+				.code-box { background: white; padding: 25px; border-radius: 10px; border: 2px dashed #e2e8f0; margin: 20px 0; text-align: center; }
+				.verification-code { background: #1e293b; color: white; padding: 20px; border-radius: 10px; font-family: monospace; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 20px 0; }
 				.footer { padding: 20px; text-align: center; color: #64748b; font-size: 14px; background: #1e293b; color: white; }
 				.note { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; }
 				.warning { background: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin: 15px 0; }
+				.instructions { background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 15px 0; }
 			</style>
 		</head>
 		<body>
@@ -521,28 +523,32 @@ func SendPasswordResetEmail(to, name, resetToken string) error {
 					<h2>Hello %s,</h2>
 					<p>We received a request to reset your LearnHub account password.</p>
 					
-					<div class="reset-box">
-						<h3>🔄 Reset Your Password</h3>
-						<p>Click the button below to create a new password:</p>
+					<div class="instructions">
+						<h3>📝 How to Reset Your Password</h3>
+						<p>1. Go to the password reset page: <strong>http://localhost:5173/reset-password</strong></p>
+						<p>2. Enter the verification code below</p>
+						<p>3. Create your new password</p>
+					</div>
+					
+					<div class="code-box">
+						<h3>🔑 Your Verification Code</h3>
+						<p>Enter this code on the reset password page:</p>
 						
-						<center>
-							<a href="%s" class="reset-button">Reset Password</a>
-						</center>
+						<div class="verification-code">%s</div>
 						
 						<p style="margin-top: 20px; color: #64748b; font-size: 14px;">
-							Or copy and paste this link in your browser:<br>
-							<span class="reset-code">%s</span>
+							This code will expire in 1 hour for security reasons.
 						</p>
 					</div>
 					
 					<div class="note">
-						<p><strong>⏰ Important:</strong> This reset link will expire in 1 hour for security reasons.</p>
-						<p>If you don't reset your password within this time, you'll need to request a new link.</p>
+						<p><strong>⏰ Important:</strong> This verification code will expire in 1 hour.</p>
+						<p>If you don't reset your password within this time, you'll need to request a new code.</p>
 					</div>
 					
 					<div class="warning">
 						<p><strong>⚠️ Security Notice:</strong> If you didn't request this password reset, please ignore this email and ensure your account is secure.</p>
-						<p>Your password will not be changed unless you click the link above and create a new one.</p>
+						<p>Your password will not be changed unless you enter this code and create a new password.</p>
 					</div>
 					
 					<p>Need help? Contact our support team for assistance.</p>
@@ -556,7 +562,7 @@ func SendPasswordResetEmail(to, name, resetToken string) error {
 			</div>
 		</body>
 		</html>
-	`, name, resetURL, resetURL)
+	`, name, verificationCode)
 
 	return SendEmail(EmailData{
 		To:      to,
@@ -612,7 +618,7 @@ func SendPasswordResetSuccessEmail(to, name string) error {
 					
 					<p>You can now login with your new password:</p>
 					<center>
-						<a href="http://localhost:8080/api/login" style="display: inline-block; padding: 12px 30px; background: #3b82f6; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">Login to LearnHub</a>
+						<a href="http://localhost:5173/login" style="display: inline-block; padding: 12px 30px; background: #3b82f6; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">Login to LearnHub</a>
 					</center>
 					
 					<p>Stay secure,<br><strong>The LearnHub Team</strong></p>

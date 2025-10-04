@@ -12,7 +12,9 @@ import (
 	"learning_hub/pkg/validation"
 	"log"
 	"net/http"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -50,7 +52,6 @@ func main() {
 	}
 
 	// Auto migrate models
-	// Add to your existing AutoMigrate
 	if err := db.AutoMigrate(
 		&models.User{},
 		&models.Course{},
@@ -84,6 +85,16 @@ func main() {
 
 	r := gin.Default()
 
+	// Add CORS middleware - ADD THIS SECTION
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
 	// API routes group
 	api := r.Group("/api")
 	{
@@ -95,11 +106,13 @@ func main() {
 		api.POST("/upload", uploadHandler.UploadFile)
 
 		// Verification & Password routes
+		// Verification & Password routes
 		api.GET("/verify-email", userHandler.VerifyEmail)
 		api.POST("/resend-verification", userHandler.ResendVerificationEmail)
 		api.POST("/forgot-password", userHandler.ForgotPassword)
 		api.POST("/reset-password", userHandler.ResetPassword)
 		api.GET("/validate-reset-token", userHandler.ValidateResetToken)
+		api.GET("/validate-reset-code", userHandler.ValidateResetCode)
 
 		// Public certificate verification
 		api.GET("/verify-certificate", progressHandler.VerifyCertificate)
@@ -226,6 +239,7 @@ func main() {
 	serverAddr := fmt.Sprintf(":%s", cfg.ServerPort)
 	fmt.Printf("📚 LearnHub API running on port %s...\n", cfg.ServerPort)
 	fmt.Printf("💳 Chapa payment integration: ENABLED\n")
+	fmt.Printf("🌐 CORS enabled for: http://localhost:5173, http://localhost:3000\n")
 
 	// Create some sample data on startup
 	createSampleData(db)

@@ -18,13 +18,12 @@ type User struct {
 
 	// Email Verification Fields
 	EmailVerified      bool       `gorm:"default:false" json:"email_verified"`
-	VerificationToken  string     `gorm:"type:varchar(255);uniqueIndex" json:"-"`
+	VerificationToken  *string    `gorm:"uniqueIndex:idx_users_verification_token;null" json:"verification_token"`
 	VerificationSentAt *time.Time `json:"verification_sent_at"`
 
-	// Password Reset Fields
-	ResetToken     string     `gorm:"type:varchar(255);uniqueIndex" json:"-"`
+	ResetToken     *string    `gorm:"null" json:"reset_token"`
 	ResetSentAt    *time.Time `json:"reset_sent_at"`
-	ResetExpiresAt *time.Time `json:"-"`
+	ResetExpiresAt *time.Time `json:"reset_expires_at"`
 
 	// Relationships
 	Courses     []Course     `gorm:"foreignKey:InstructorID" json:"courses,omitempty"`

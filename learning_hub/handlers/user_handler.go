@@ -24,6 +24,7 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 }
 
 // Update RegisterUser function to send verification email
+// Update RegisterUser function in user_handler.go
 func (h *UserHandler) RegisterUser(c *gin.Context) {
 	var request struct {
 		FirstName string `json:"first_name" binding:"required"`
@@ -31,7 +32,7 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 		Email     string `json:"email" binding:"required,email"`
 		Password  string `json:"password" binding:"required,min=6"`
 		Phone     string `json:"phone" binding:"omitempty"`
-		Role      string `json:"role" binding:"omitempty,oneof=student instructor admin"`
+		Role      string `json:"role" binding:"omitempty"` // Remove role validation for public registration
 	}
 
 	// Bind JSON input
@@ -69,27 +70,19 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 		return
 	}
 
-	// Set verification sent time
 	verificationSentAt := time.Now()
 
-	// Create new user (unverified)
 	newUser := models.User{
 		FirstName:          request.FirstName,
 		LastName:           request.LastName,
 		Email:              request.Email,
 		Password:           request.Password,
 		Phone:              request.Phone,
-		Role:               request.Role,
+		Role:               "student", // Force student role for public registration
 		EmailVerified:      false,
-		VerificationToken:  verificationToken,
+		VerificationToken:  &verificationToken,
 		VerificationSentAt: &verificationSentAt,
 	}
-
-	// Set default role if not provided
-	if newUser.Role == "" {
-		newUser.Role = "student"
-	}
-
 	// Hash password
 	if err := newUser.HashPassword(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -115,7 +108,7 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 	}()
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message": "User registered successfully. Please check your email for verification link.",
+		"message": "Student account created successfully. Please check your email for verification link.",
 		"user": gin.H{
 			"id":             newUser.ID,
 			"first_name":     newUser.FirstName,
@@ -130,7 +123,6 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 	})
 }
 
-// VerifyEmail handles email verification
 // VerifyEmail handles email verification
 func (h *UserHandler) VerifyEmail(c *gin.Context) {
 	token := c.Query("token")
@@ -419,6 +411,45 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	})
 }
 
+// ValidateResetCode checks if a reset code is valid
+func (h *UserHandler) ValidateResetCode(c *gin.Context) {
+	code := c.Query("code")
+	if code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Reset code is required",
+		})
+		return
+	}
+
+	// Find user by reset code (stored in reset_token field)
+	var user models.User
+	if err := h.DB.Where("reset_token = ?", code).First(&user).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"valid": false,
+			"error": "Invalid reset code",
+		})
+		return
+	}
+
+	// Check if code is expired
+	if utils.IsResetTokenExpired(user.ResetExpiresAt) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"valid": false,
+			"error": "Reset code has expired",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"valid": true,
+		"user": gin.H{
+			"id":    user.ID,
+			"email": user.Email,
+			"name":  user.FirstName + " " + user.LastName,
+		},
+	})
+}
+
 // UpdateProfile updates the authenticated user's profile
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	userID, exists := c.Get("userID")
@@ -428,10 +459,11 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	}
 
 	var updateData struct {
-		FirstName string `json:"first_name" binding:"omitempty"`
-		LastName  string `json:"last_name" binding:"omitempty"`
-		Phone     string `json:"phone" binding:"omitempty"` // Added phone field
-		Password  string `json:"password" binding:"omitempty,min=6"`
+		FirstName       string `json:"first_name" binding:"omitempty"`
+		LastName        string `json:"last_name" binding:"omitempty"`
+		Phone           string `json:"phone" binding:"omitempty"` // Added phone field
+		Password        string `json:"password" binding:"omitempty,min=6"`
+		CurrentPassword string `json:"current_password" binding:"omitempty"` // Add current password field
 	}
 
 	if err := c.ShouldBindJSON(&updateData); err != nil {
@@ -445,6 +477,30 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
+	// If user is changing password, require current password verification
+	if updateData.Password != "" {
+		if updateData.CurrentPassword == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Current password is required to change password",
+			})
+			return
+		}
+
+		// Verify current password
+		if err := user.CheckPassword(updateData.CurrentPassword); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Current password is incorrect",
+			})
+			return
+		}
+
+		user.Password = updateData.Password
+		if err := user.HashPassword(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to secure password: " + err.Error()})
+			return
+		}
+	}
+
 	// Update fields if provided
 	if updateData.FirstName != "" {
 		user.FirstName = updateData.FirstName
@@ -454,13 +510,6 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	}
 	if updateData.Phone != "" {
 		user.Phone = updateData.Phone // Update phone field
-	}
-	if updateData.Password != "" {
-		user.Password = updateData.Password
-		if err := user.HashPassword(); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to secure password: " + err.Error()})
-			return
-		}
 	}
 
 	if err := h.DB.Save(&user).Error; err != nil {
@@ -479,34 +528,6 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 			"role":       user.Role,
 		},
 	})
-	// In UpdateProfile function, add this check:
-	if updateData.Password != "" {
-		// If user is changing password, require current password verification
-		var currentPassword struct {
-			CurrentPassword string `json:"current_password" binding:"required"`
-		}
-
-		if err := c.ShouldBindJSON(&currentPassword); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Current password is required to change password",
-			})
-			return
-		}
-
-		// Verify current password
-		if err := user.CheckPassword(currentPassword.CurrentPassword); err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Current password is incorrect",
-			})
-			return
-		}
-
-		user.Password = updateData.Password
-		if err := user.HashPassword(); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to secure password: " + err.Error()})
-			return
-		}
-	}
 }
 
 // GetUserEnrollments returns all courses the user is enrolled in
@@ -549,7 +570,7 @@ func (h *UserHandler) ForgotPassword(c *gin.Context) {
 	if err := h.DB.Where("email = ?", request.Email).First(&user).Error; err != nil {
 		// Don't reveal if user exists for security
 		c.JSON(http.StatusOK, gin.H{
-			"message": "If the email exists, a password reset link has been sent.",
+			"message": "If the email exists, a password reset code has been sent.",
 		})
 		return
 	}
@@ -562,70 +583,84 @@ func (h *UserHandler) ForgotPassword(c *gin.Context) {
 		return
 	}
 
-	// Generate reset token
-	resetToken, err := utils.GeneratePasswordResetToken()
+	// Generate reset code (6-digit verification code)
+	resetCode, err := utils.GenerateVerificationCode()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to generate reset token",
+			"error": "Failed to generate reset code",
 		})
 		return
 	}
 
-	// Set reset token and expiry
+	// Set reset code and expiry
 	resetSentAt := time.Now()
 	resetExpiresAt := utils.CalculateResetExpiry()
-	user.ResetToken = resetToken
-	user.ResetSentAt = &resetSentAt
-	user.ResetExpiresAt = &resetExpiresAt
 
-	if err := h.DB.Save(&user).Error; err != nil {
+	// Store the verification code in reset_token field
+	// Use direct SQL update to avoid unique constraint issues with empty verification_token
+	result := h.DB.Exec(`
+		UPDATE users 
+		SET reset_token = ?, reset_sent_at = ?, reset_expires_at = ? 
+		WHERE id = ? AND email = ?
+	`, resetCode, resetSentAt, resetExpiresAt, user.ID, user.Email)
+
+	if result.Error != nil {
+		log.Printf("❌ Failed to update user reset token: %v", result.Error)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to process reset request",
 		})
 		return
 	}
 
-	// Send password reset email
+	if result.RowsAffected == 0 {
+		log.Printf("❌ No rows affected during reset token update")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to update user record",
+		})
+		return
+	}
+
+	// Send password reset email with verification code
 	go func() {
 		fullName := user.FirstName + " " + user.LastName
-		if err := email.SendPasswordResetEmail(user.Email, fullName, resetToken); err != nil {
+		if err := email.SendPasswordResetEmail(user.Email, fullName, resetCode); err != nil {
 			log.Printf("Failed to send password reset email: %v", err)
 		}
 	}()
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":    "Password reset link sent to your email",
+		"message":    "Password reset code sent to your email",
 		"expires_in": "1 hour",
 	})
 }
 
-// ResetPassword handles password reset with token
+// ResetPassword handles password reset with verification code
 func (h *UserHandler) ResetPassword(c *gin.Context) {
 	var request struct {
-		Token    string `json:"token" binding:"required"`
+		Code     string `json:"code" binding:"required"`
 		Password string `json:"password" binding:"required,min=6"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Token and new password are required",
+			"error": "Code and new password are required",
 		})
 		return
 	}
 
-	// Find user by reset token
+	// Find user by reset code
 	var user models.User
-	if err := h.DB.Where("reset_token = ?", request.Token).First(&user).Error; err != nil {
+	if err := h.DB.Where("reset_token = ?", request.Code).First(&user).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid or expired reset token",
+			"error": "Invalid or expired reset code",
 		})
 		return
 	}
 
-	// Check if token is expired
+	// Check if code is expired
 	if utils.IsResetTokenExpired(user.ResetExpiresAt) {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Reset token has expired. Please request a new one.",
+			"error": "Reset code has expired. Please request a new one.",
 		})
 		return
 	}
@@ -640,7 +675,7 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 	}
 
 	// Clear reset token fields
-	user.ResetToken = ""
+	user.ResetToken = nil
 	user.ResetSentAt = nil
 	user.ResetExpiresAt = nil
 
@@ -668,7 +703,7 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 	})
 }
 
-// ValidateResetToken checks if a reset token is valid
+// ValidateResetToken checks if a reset token is valid (kept for backward compatibility)
 func (h *UserHandler) ValidateResetToken(c *gin.Context) {
 	token := c.Query("token")
 	if token == "" {
