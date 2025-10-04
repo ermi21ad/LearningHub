@@ -297,7 +297,7 @@ Or test step by step in **Postman**, following the structured API sequence.
 
 ## 📬 Contact
 
-👤 **Your Name**
+👤 **Ermias Abebe**
 🔗 LinkedIn: [ermias-abebe-zewdie](https://linkedin.com/in/ermias-abebe-zewdie)
 💻 GitHub: [@ermi21ad](https://github.com/ermi21ad)
 
